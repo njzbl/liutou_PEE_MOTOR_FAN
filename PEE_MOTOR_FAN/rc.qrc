@@ -22,5 +22,6 @@
         <file>image/ok.png</file>
         <file>image/wait.png</file>
         <file>image/wait1.png</file>
+        <file>image/LOGOPNG.png</file>
     </qresource>
 </RCC>

@@ -58,6 +58,9 @@ void frmMain::InitStyle()
     IconHelper::Instance()->SetIcon(ui->btnMenu_Min, QChar(0xf068), 10);
     IconHelper::Instance()->SetIcon(ui->btnMenu, QChar(0xf0c9), 10);
     IconHelper::Instance()->SetIcon(ui->lab_Ico, QChar(0xf015), 12);
+    ui->btnMenu_Max->setVisible(false);
+    ui->btnMenu_Min->setVisible(false);
+    ui->btnMenu->setVisible(false);
 }
 
 bool frmMain::eventFilter(QObject *obj, QEvent *event)
@@ -178,12 +181,117 @@ void frmMain::initQTimer(void)
     connect(mQTimer,SIGNAL(timeout()),this,SLOT(on_time_update()));
 }
 
+int frmMain::dataProcess(QByteArray bytearray)
+{
+    uint16_t crc16 = 0,reccrc16 = 0;
+    char *data;
+    int re = 0;
+    if(bytearray.size() < 34)
+        return 1;
+    if(bytearray.at(0) != 0x1b || bytearray.at(1) != 0x10)
+        return 2;
+    data = bytearray.data();
+    crc16 = crc((uint8_t *)data, bytearray.size() - 4);
+    reccrc16 = bytearray.at(33);
+    reccrc16 = (reccrc16 << 8) + bytearray.at(33);
+    if(reccrc16 != crc16)
+        return 3;
+    switch (bytearray.at(2)) {
+        case 0x2f:
+            flashlabel(bytearray);
+        break;
+        case 0x7f:      //软件版本号
+            re = 0x7f;
+        break;
+        default:
+
+        break;
+    }
+    return re;
+}
+
+void frmMain::flashlabel(QByteArray bytearray)
+{
+    QPixmap picwait(QString(":/image/wait1.png"));
+    QPixmap picok(QString(":/image/ok.png"));
+    QPixmap picng(QString(":/image/ng.png"));
+    if(bytearray.at(27) == 1){
+        if(bytearray.at(28) & 0x01)
+            ui->label_s1_sta->setPixmap(picng);
+        else
+            ui->label_s1_sta->setPixmap(picok);
+        if(bytearray.at(28) & 0x02)
+            ui->label_s2_sta->setPixmap(picng);
+        else
+            ui->label_s2_sta->setPixmap(picok);
+        if(bytearray.at(29) & 0x01)
+            ui->label_motor1_sta->setPixmap(picng);
+        else
+            ui->label_motor1_sta->setPixmap(picok);
+        if(bytearray.at(29) & 0x02)
+            ui->label_motor2_sta->setPixmap(picng);
+        else
+            ui->label_motor2_sta->setPixmap(picok);
+        if(bytearray.at(29) & 0x04)
+            ui->label_motor3_sta->setPixmap(picng);
+        else
+            ui->label_motor3_sta->setPixmap(picok);
+        if(bytearray.at(29) & 0x08)
+            ui->label_motor4_sta->setPixmap(picng);
+        else
+            ui->label_motor4_sta->setPixmap(picok);
+        if(bytearray.at(29) & 0x10)
+            ui->label_fan1_sta->setPixmap(picng);
+        else
+            ui->label_fan1_sta->setPixmap(picok);
+        if(bytearray.at(29) & 0x20)
+            ui->label_fan2_sta->setPixmap(picng);
+        else
+            ui->label_fan2_sta->setPixmap(picok);
+        if(bytearray.at(29) & 0x40)
+            ui->label_fan3_sta->setPixmap(picng);
+        else
+            ui->label_fan3_sta->setPixmap(picok);
+        if((bytearray.at(29) & 0x7f) == 0x7f)
+            ui->label_start_sta->setPixmap(picng);
+        else
+            ui->label_start_sta->setPixmap(picok);
+    }
+}
+
+void frmMain::flashlabel(void)
+{
+    QPixmap picwait(QString(":/image/wait1.png"));
+    ui->label_s1_sta->setPixmap(picwait);
+    ui->label_s2_sta->setPixmap(picwait);
+    ui->label_motor1_sta->setPixmap(picwait);
+    ui->label_motor2_sta->setPixmap(picwait);
+    ui->label_motor3_sta->setPixmap(picwait);
+    ui->label_motor4_sta->setPixmap(picwait);
+    ui->label_fan1_sta->setPixmap(picwait);
+    ui->label_fan2_sta->setPixmap(picwait);
+    ui->label_fan3_sta->setPixmap(picwait);
+    ui->label_start_sta->setPixmap(picwait);
+}
+
 void frmMain::recvMessage()
 {
+    int re;
     QByteArray bytearray;
-    bytearray.append("串口1接收数据：");
+    QByteArray versionarray;
+
+    char buf[50];
+    mCount = 0;
+    bytearray.append("串口接收数据：");
     bytearray.append(mSerialPort.read(80));
-    ui->textBrowser_message->append((const QString &)bytearray);
+    re = dataProcess(bytearray);
+    memcpy(buf,bytearray,bytearray.size() - 2);
+    buf[bytearray.size() - 2] = 0;
+    if(re == 0x7f) {
+        versionarray.append("software version:");
+        versionarray.append(buf + 2);
+    }
+    ui->textBrowser_message->append((const QString &)versionarray);
 }
 
 void frmMain::on_time_update(void)
@@ -203,6 +311,10 @@ void frmMain::on_time_update(void)
     sendBuf[9] = (crc16 >> 8) & 0xff;
     mSerialPort.write((const char*)sendBuf, 10);
     mSerialPort.waitForBytesWritten(50);
+    mCount++;
+    if(mCount > 10){ //1000ms没有接收到数据认为已经断开
+        flashlabel();
+    }
     update();
 }
 

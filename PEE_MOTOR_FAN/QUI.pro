@@ -10,6 +10,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = QUI
 TEMPLATE = app
+TRANSLATIONS = Translations_china.ts
 
 
 SOURCES += main.cpp\

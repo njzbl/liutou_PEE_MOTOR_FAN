@@ -16,6 +16,7 @@
 #include <QVector>
 #include <QLine>
 #include <QIntValidator>
+#include <QtAlgorithms>
 
 namespace Ui {
 class frmMain;
@@ -39,7 +40,10 @@ protected:
 
 private slots:
     void InitStyle();
+    int dataProcess(QByteArray bytearray);
     void recvMessage();
+    void flashlabel(QByteArray bytearray);
+    void flashlabel(void);
     void configCanAdapter(void);
     uint16_t crc(uint8_t *s,uint16_t len);
 
@@ -67,6 +71,7 @@ private:
     bool max;
     QRect location;
     QSerialPort         mSerialPort;
+    uint64_t   mCount;
 
 
     qint32 iRet;
